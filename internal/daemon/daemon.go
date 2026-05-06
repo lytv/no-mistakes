@@ -297,13 +297,14 @@ func recoverOnStartup(d *db.DB, p *paths.Paths) {
 	}
 }
 
-// migrateGateConfigs walks every bare repo under p.ReposDir() and applies
+// migrateGateConfigs walks every bare repo under p.ReposDir() and refreshes
+// no-mistakes-managed post-receive hooks, enables push options, and applies
 // git.IsolateHooksPath. The operation is idempotent: bare repos already
-// configured by gate.Init are left effectively unchanged. Older bare repos
-// (from before issue #122 was fixed) best-effort get their per-worktree
-// hookspath pinned when Git supports config --worktree, so subsequent
-// husky-style writes to shared local config can no longer disable the
-// post-receive hook.
+// configured by gate.Init are left effectively unchanged, and custom hooks are
+// preserved. Older bare repos (from before issue #122 was fixed) best-effort
+// get their managed hook updated and per-worktree hookspath pinned when Git
+// supports config --worktree, so subsequent husky-style writes to shared local
+// config can no longer disable the post-receive hook.
 func migrateGateConfigs(ctx context.Context, p *paths.Paths) {
 	entries, err := os.ReadDir(p.ReposDir())
 	if err != nil {
@@ -315,6 +316,9 @@ func migrateGateConfigs(ctx context.Context, p *paths.Paths) {
 			continue
 		}
 		bareDir := filepath.Join(p.ReposDir(), entry.Name())
+		if _, err := git.RefreshManagedPostReceiveHook(bareDir); err != nil {
+			slog.Warn("refresh gate post-receive hook failed", "bare", bareDir, "error", err)
+		}
 		if _, err := git.Run(ctx, bareDir, "config", "receive.advertisePushOptions", "true"); err != nil {
 			slog.Warn("enable gate push options failed", "bare", bareDir, "error", err)
 		}
