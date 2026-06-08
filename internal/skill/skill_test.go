@@ -30,6 +30,21 @@ func TestMarkdownFrontmatter(t *testing.T) {
 	}
 }
 
+func TestBodyDocumentsTaskFirstFlow(t *testing.T) {
+	md := Markdown()
+	for _, want := range []string{
+		"## Two ways to invoke",
+		"feature branch",
+		"Inspect `git status` before you change or commit anything",
+		"commit only the changes that belong to the user's task",
+		"passing the user's task as your `--intent`",
+	} {
+		if !strings.Contains(md, want) {
+			t.Errorf("body should document the task-first flow: missing %q", want)
+		}
+	}
+}
+
 func TestInstallWritesBothPaths(t *testing.T) {
 	root := t.TempDir()
 	written, err := Install(root)
